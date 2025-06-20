@@ -23,6 +23,9 @@ app.use('/api/v1/auth', authRoutes);
 const serviceRouter = require('./routes/service.routes');
 app.use('/api/v1/services', serviceRouter);
 
+const contractRoutes = require('./routes/contract.routes');
+app.use('/api/v1', contractRoutes);
+
 app.listen(PORT, () => {
     console.log(`Servidor corriendo en http://localhost:${PORT}`);
 });

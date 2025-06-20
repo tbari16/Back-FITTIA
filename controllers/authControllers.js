@@ -72,7 +72,7 @@ exports.login = async(req, res) => {
         const {password: _, ...userData} = user.toObject();
 
         res.status(200).json({
-            accesToken: token,
+            accessToken: token,
             user: userData
         });
     } catch (err) {

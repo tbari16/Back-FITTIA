@@ -8,6 +8,12 @@ const userSchema = new mongoose.Schema({
     birthDate: { type: Date, required: true },
     role: { type: String, enum: ['client', 'trainer'], required: true },
 
+    contractedServices: [{
+        serviceId: { type: mongoose.Schema.Types.ObjectId, ref: 'Service' },
+        status: { type: String, enum: ['pendiente', 'aceptado', 'cancelado'], default: 'pendiente' },
+        rating: { type: Number }
+    }],
+
     // Estos campos sirven para reestablecer la contraseña
     passwordResetCode: String,
     passwordResetExpires: Date
