@@ -2,13 +2,12 @@ const Contract = require('../models/Contract');
 const Service = require('../models/Service');
 
 exports.getMyContracts = async(req, res) => {
-    const userId = req.params.userId;
+    const userId = req.user.id;
 
-    if(userId !== req.user.id) {
-        return res.status(403).json({error: "Acceso denegado"});
-    }
-
-    const contracts = await Contract.find({client: userId}).populate('service');
+    const contracts = await Contract.find({client: userId}).populate({
+        path: 'service',
+        populate: { path: 'trainer', select: 'name' }
+    });
 
     if(!contracts.length){
         return res.status(204).send();
@@ -19,7 +18,10 @@ exports.getMyContracts = async(req, res) => {
         title: contract.service.title,
         description: contract.service.description,
         imageUrl: contract.service.imageUrl,
-        trainer: contract.service.trainer,
+        trainer: {
+            id: contract.service.trainer._id,
+            name: contract.service.trainer.name
+        },
         rating: contract.service.rating,
         status: contract.status
     }));

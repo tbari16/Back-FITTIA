@@ -29,7 +29,7 @@ exports.getAllPublishedServices = async (req, res) => {
 
 exports.searchServices = async (req, res) => {
     try {
-        const {category, minPrice, maxPrice, duration, location, language, rating, mode} = req.body;
+        const {category, minPrice, maxPrice, duration, location, language, rating, mode} = req.query;
 
         const filters = {status: 'publicado'};
 
@@ -42,11 +42,11 @@ exports.searchServices = async (req, res) => {
 
         if (minPrice || maxPrice) {
             filters.price = {};
-            if(minPrice) filter.price.$gte = Number(minPrice);
-            if(maxPrice) filter.price.$lte = Number(maxPrice);
+            if(minPrice) filters.price.$gte = Number(minPrice);
+            if(maxPrice) filters.price.$lte = Number(maxPrice);
         }
 
-        const results = await Service.find(filters);
+        const results = await Service.find(filters).populate('trainer', 'name');
 
         if(results.length === 0) {
             return res.status(204).send(); // no existen servicios
@@ -75,12 +75,12 @@ exports.searchServices = async (req, res) => {
 exports.getTrainerServices = async(req, res) => {
     const trainerId = req.params.trainerId;
 
-    if(trainerId !== req.user.id){
+    if(trainerId !== req.user.id.toString()){
         return res.status(403).json({error: "Acceso denegado."})
     }
 
     try {
-        const services = await Service.find({'trainer.id': trainerId});
+        const services = await Service.find({trainer: trainerId});
 
         if(!services.length) return res.status(204).send();
 
