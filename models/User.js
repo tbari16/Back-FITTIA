@@ -7,6 +7,7 @@ const userSchema = new mongoose.Schema({
     password: { type: String, required: true },
     birthDate: { type: Date, required: true },
     role: { type: String, enum: ['client', 'trainer'], required: true },
+    views: { type: Number, default: 0},
 
     contractedServices: [{
         serviceId: { type: mongoose.Schema.Types.ObjectId, ref: 'Service' },
