@@ -1,6 +1,8 @@
 const Contract = require('../models/Contract');
 const Service = require('../models/Service');
 const Material = require('../models/Material');
+const fs = require('fs');
+const path = require('path');
 
 exports.getMyContracts = async(req, res) => {
     const userId = req.user.id;
@@ -270,3 +272,65 @@ exports.uploadMaterial = async(req, res) => {
     });
 
 }
+
+exports.getContractMaterials = async(req, res) => {
+    const contractId = req.params.contractId;
+    const userId = req.user.id;
+
+    try {
+        const contract = await Contract.findById(contract);
+
+        if(!contract) {
+            return res.status(404).json({error: "Contrato no encontrado"});
+        }
+
+        const isOwner = contract.client.equals(userId) || contract.trainer.equals(userId);
+        if(!isOwner){
+            return res.status(403).json({error: "No estas autorizado para ver este contrato"});
+        }
+
+        const materials = await Material.find({ contract: contractId });
+
+        const response = materials.map(mat => ({
+            materialId: mat._id,
+            fileName: mat.fileName,
+            downloadUrl: mat.fileUrl
+        }));
+
+        return res.status(200).json(response);
+
+    } catch(err) {
+        return res.status(500).json({error: "Error al obtener los materiales."})
+    }
+};
+
+exports.downloadMaterial = async(req, res) => {
+    const materialId = req.params.materialId;
+    const userId = req.user.id;
+
+    try {
+        const material = await Material.findById(materialId).populate('contract');
+
+        if (!material) {
+            return res.status(404).json({ error: 'Material no encontrado.' });
+        }
+
+        const contract = material.contract;
+
+        // Verifica que el usuario sea el cliente o el entrenador
+        if (!contract.client.equals(userId) && !contract.trainer.equals(userId)) {
+            return res.status(403).json({ error: 'No estás autorizado para acceder a este material.' });
+        }
+
+        const filePath = path.join(__dirname, '..', material.fileUrl); // fileUrl = /uploads/archivo.pdf
+
+        // Verifica si el archivo realmente existe en el sistema de archivos
+        if (!fs.existsSync(filePath)) {
+            return res.status(404).json({ error: 'Archivo no encontrado en el servidor.' });
+        }
+
+        res.download(filePath, material.fileName); // descarga con nombre original
+    } catch (err) {
+        res.status(500).json({ error: 'Error al descargar el material.' });
+    }
+};

@@ -12,9 +12,8 @@ router.post('/contracts/recontract', authMiddleware, contractController.recontra
 router.patch('/contracts/:contractId/changeTime', authMiddleware, contractController.updateContractTime);
 router.patch('/contracts/:contractId/trainerAnswer', authMiddleware, contractController.updateContractStatus);
 
-router.post('/contracts/:contractId/materials', authMiddleware, upload.single('file', contractController.uploadMaterial));
-
-
-
+router.post('/contracts/:contractId/materials', authMiddleware, upload.single('file'), contractController.uploadMaterial);
+router.get('/contracts/:contractId/materials', authMiddleware, contractController.getContractMaterials);
+router.get('/materials/:materialId', authMiddleware, contractController.downloadMaterial);
 
 module.exports = router;

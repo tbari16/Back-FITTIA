@@ -33,7 +33,11 @@ const commentsRoutes = require('./routes/comment.routes');
 app.use('/api/v1/comments', commentsRoutes);
 
 // Carga de archivos
-app.use('/uploads', express.static('uploads'));
+const path = require('path');
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+
+const notificationRoutes = require('./routes/notification.routes');
+app.use('/api/v1', notificationRoutes);
 
 app.listen(PORT, () => {
     console.log(`Servidor corriendo en http://localhost:${PORT}`);
