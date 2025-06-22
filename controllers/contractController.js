@@ -28,3 +28,213 @@ exports.getMyContracts = async(req, res) => {
 
     res.status(200).json(response);
 }
+
+exports.createContract = async(req,res) => {
+    const {serviceId, selectedSchedule} = req.body;
+    const clientId = req.user.id;
+
+    if(!serviceId || !Array.isArray(selectedSchedule) || selectedSchedule.length === 0){
+        return res.status(400).json({error: "Faltan datos o formato inválido"});
+    }
+
+    try {
+        const service = await Service.findById(serviceId).populate('trainer');
+        if(!service) {
+            return res.status(404).json({error: "Servicio no encontrado."});
+        }
+
+        const existing = await Contract.findOne({client: clientId, service: serviceId, status: {$ne:'cancelado'}});
+        if(existing){
+            return res.status(403).json({error: "Ya existe una contratación activa de este servicio."})
+        }
+
+        const newContract = new Contract({
+            client: clientId,
+            trainer: service.trainer._id,
+            service: serviceId,
+            selectedSchedule,
+            status: 'pendiente'
+        })
+
+        await newContract.save();
+
+        return res.status(201).json({
+            contractId: newContract._id,
+            status: newContract.status
+        });
+    } catch(err){
+        return res.status(500).json({error: "Error al crear contrato"});
+    }
+    
+};
+
+exports.getContractById = async(req,res) => {
+    const { contractId } = req.params;
+    const userId = req.user.id;
+
+    try {
+        const contract = await Contract.findById(contractId).populate({path: 'service',select: 'title price',}).populate({path: 'trainer',select: 'firstName lastName',}).populate({path: 'client',select: '_id',});
+
+        if (!contract) {
+            return res.status(404).json({ error: 'Contrato no encontrado.' });
+        }
+
+        // Solo el cliente o el entrenador puede acceder
+        if (contract.client._id.toString() !== userId && contract.trainer._id.toString() !== userId) {
+            return res.status(403).json({ error: 'No tenés permiso para ver este contrato.' });
+        }
+
+        const response = {
+            contractId: contract._id,
+            service: {
+                id: contract.service._id,
+                title: contract.service.title,
+                price: contract.service.price,
+            },
+            trainer: {
+                id: contract.trainer._id,
+                name: `${contract.trainer.firstName} ${contract.trainer.lastName}`,
+            },
+            schedule: contract.schedule || [],
+            status: contract.status,
+            remainingClasses: contract.remainingClasses || 0,
+        };
+
+        return res.status(200).json(response);
+
+    } catch (error) {
+        return res.status(500).json({ error: 'Error del servidor.' });
+    }
+};
+
+exports.cancelContract = async(req,res) => {
+    const userId = req.user.id;
+    const contractId = req.params.contractId;
+
+    try {
+        const contract = await Contract.findById(contractId);
+
+        if (!contract) {
+            return res.status(404).json({ error: 'Contrato no encontrado.' });
+        }
+
+        if (contract.client.toString() !== userId) {
+            return res.status(403).json({ error: 'No tenés permiso para cancelar este contrato.' });
+        }
+
+        if (contract.status === 'cancelado') {
+            return res.status(404).json({ error: 'El contrato ya fue cancelado.' });
+        }
+
+        contract.status = 'cancelado';
+        await contract.save();
+
+        res.status(200).json({ message: 'Contrato cancelado correctamente.' });
+    } catch (err) {
+        res.status(500).json({ error: 'Error al cancelar el contrato.' });
+    }
+};
+
+exports.recontractContract = async(req, res) => {
+    const userId = req.user.id;
+    const { previousContractId } = req.body;
+
+    try {
+        const oldContract = await Contract.findById(previousContractId);
+
+        if (!oldContract) {
+            return res.status(404).json({ error: 'Contrato original no encontrado.' });
+        }
+
+        if (oldContract.client.toString() !== userId) {
+            return res.status(403).json({ error: 'No tenés permiso para recontratar este servicio.' });
+        }
+
+        if (oldContract.status !== 'completado') {
+            return res.status(400).json({ error: 'Solo se pueden recontratar servicios completados.' });
+        }
+
+        const newContract = new Contract({
+            client: oldContract.client,
+            trainer: oldContract.trainer,
+            service: oldContract.service,
+            selectedSchedule: oldContract.selectedSchedule,
+            status: 'pendiente'
+        });
+
+        await newContract.save();
+
+        res.status(201).json({
+            newContractId: newContract._id,
+            status: newContract.status
+        });
+    } catch (err) {
+        res.status(500).json({ error: 'Error al recontratar el servicio.' });
+    }
+};
+
+exports.updateContractTime = async(req,res) => {
+    const userId = req.user.id;
+    const {contractId} = req.params;
+    const {newSchedule} = req.body;
+
+    if (!Array.isArray(newSchedule) || newSchedule.length === 0) {
+        return res.status(400).json({ error: 'Horarios inválidos.' });
+    }
+
+    try {
+        const contract = await Contract.findById(contractId);
+
+        if (!contract) {
+            return res.status(404).json({ error: 'Contrato no encontrado.' });
+        }
+
+        if (contract.client.toString() !== userId) {
+            return res.status(403).json({ error: 'No autorizado para modificar este contrato.' });
+        }
+
+        if (contract.status !== 'aceptado') {
+            return res.status(409).json({ error: 'No se puede modificar un contrato no aceptado.' });
+        }
+
+        contract.selectedSchedule = newSchedule;
+        await contract.save();
+
+        res.status(200).json({ message: 'Horarios actualizados correctamente.' });
+    } catch (err) {
+        res.status(500).json({ error: 'Error al actualizar los horarios.' });
+    }
+};
+
+exports.updateContractStatus = async(req, res) => {
+    const trainerId = req.user.id;
+    const { contractId } = req.params;
+    const { status } = req.body;
+
+    if (!['aceptado', 'rechazado'].includes(status)) {
+        return res.status(400).json({ error: 'Estado inválido.' });
+    }
+
+    try {
+        const contract = await Contract.findById(contractId).populate('trainer');
+
+        if (!contract) {
+            return res.status(404).json({ error: 'Contrato no encontrado.' });
+        }
+
+        if (contract.trainer._id.toString() !== trainerId) {
+            return res.status(403).json({ error: 'No sos el entrenador de este contrato.' });
+        }
+
+        if (contract.status !== 'pendiente') {
+            return res.status(409).json({ error: 'El contrato no se encuentra en estado pendiente.' });
+        }
+
+        contract.status = status;
+        await contract.save();
+
+        res.status(200).json({ status });
+    } catch (err) {
+        res.status(500).json({ error: 'Error al actualizar el contrato.' });
+    }
+};

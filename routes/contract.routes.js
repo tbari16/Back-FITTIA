@@ -4,5 +4,14 @@ const contractController = require('../controllers/contractController');
 const authMiddleware = require('../middlewares/authMiddleware');
 
 router.get('/users/me/my-services', authMiddleware, contractController.getMyContracts);
+router.post('/contracts', authMiddleware, contractController.createContract);
+router.get('/contracts/:contractId', authMiddleware, contractController.getContractById);
+router.patch('/contracts/:contractId/cancel', authMiddleware, contractController.cancelContract);
+router.post('/contracts/recontract', authMiddleware, contractController.recontractContract);
+router.patch('/contracts/:contractId/changeTime', authMiddleware, contractController.updateContractTime);
+router.patch('/contracts/:contractId/trainerAnswer', authMiddleware, contractController.updateContractStatus);
+
+
+
 
 module.exports = router;

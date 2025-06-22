@@ -8,7 +8,12 @@ const contractSchema = new mongoose.Schema({
         type: String,
         enum: ['pendiente', 'aceptado', 'rechazado', 'completado'],
         default: 'pendiente'
-    }
+    },
+    selectedSchema: [{
+        day: {type: String, required: true},
+        time: {type: String, required: true}
+    }],
+    remainingClasses: { type: Number, default: 0 }
 }, { timestamps: true });
 
 module.exports = mongoose.model('Contract', contractSchema);

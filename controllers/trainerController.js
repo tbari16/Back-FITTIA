@@ -1,5 +1,6 @@
 const User = require('../models/User');
 const Contract = require('../models/Contract');
+const Service = require('../models/Service')
 const Comment = require('../models/Comment');
 const mongoose = require('mongoose');
 
@@ -75,5 +76,44 @@ exports.getTrainerComments = async(req, res) => {
         return res.status(200).json(formatted);
     } catch(err) {
         return res.status(500).json({error: "Error al obtener comentarios del entrenador"})
+    }
+};
+
+exports.getPublicTrainerProfile = async (req, res) => {
+    const {trainerId} = req.params;
+
+    try {
+        const trainer = await User.findById(trainerId);
+
+        if(!trainer || trainer.role !== 'trainer') {
+            return res.status(404).json({error: "No se encontro al entrendador"})
+        }
+
+        const contractCount = await Contract.countDocuments({
+            service: {$in: await Service.find({trainer: trainerId}).distinct('_id')},
+            status: {$in: ['aceptado', 'completado']}
+        });
+
+        const comments = await Comment.find({trainer: trainerId});
+        const commentCount = comments.length;
+        const avgRating = commentCount > 0 ? (comments.reduce((sum, c) => sum + c.rating, 0) / commentCount).toFixed(1) : null;
+
+        const publishedServices = await Service.find({trainer: trainerId, status: 'publicado'}).select('title description price imageUrl rating');
+
+        const profile = {
+            name: `${trainer.firstName} ${trainer.lastName}`,
+            bio: trainer.bio,
+            specialties: trainer.specialties,
+            location: trainer.location,
+            profileImage: trainer.profileImage,
+            averageRating: avgRating ? parseFloat(avgRating) : null,
+            contractCount,
+            commentCount,
+            services: publishedServices
+        };
+
+        return res.status(200).json(profile);
+    } catch(err) {
+        return res.status(500).json({error: "Error al obtener el perfil público del entrenador"});
     }
 };
