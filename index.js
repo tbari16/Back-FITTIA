@@ -32,6 +32,9 @@ app.use('/api/v1/trainers', trainerRoutes);
 const commentsRoutes = require('./routes/comment.routes');
 app.use('/api/v1/comments', commentsRoutes);
 
+// Carga de archivos
+app.use('/uploads', express.static('uploads'));
+
 app.listen(PORT, () => {
     console.log(`Servidor corriendo en http://localhost:${PORT}`);
 });

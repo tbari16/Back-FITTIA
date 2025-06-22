@@ -1,5 +1,6 @@
 const Contract = require('../models/Contract');
 const Service = require('../models/Service');
+const Material = require('../models/Material');
 
 exports.getMyContracts = async(req, res) => {
     const userId = req.user.id;
@@ -238,3 +239,34 @@ exports.updateContractStatus = async(req, res) => {
         res.status(500).json({ error: 'Error al actualizar el contrato.' });
     }
 };
+
+exports.uploadMaterial = async(req, res) => {
+    const {contractId} = req.params;
+    const {fileName} = req.body;
+    const trainerId = req.user.id;
+
+    if (!req.file || !fileName) {
+        return res.status(400).json({ error: 'Archivo o nombre faltante.' });
+    }
+
+    const contract = await Contract.findById(contractId);
+    if (!contract || contract.status !== 'aceptado') {
+        return res.status(404).json({ error: 'Contrato no válido.' });
+    }
+
+    if (contract.trainer.toString() !== trainerId) {
+        return res.status(403).json({ error: 'No autorizado para subir material.' });
+    }
+
+    const material = await Material.create({
+        contract: contractId,
+        fileName,
+        fileUrl: `/uploads/${req.file.filename}`
+    });
+
+    res.status(201).json({
+        materialId: material._id,
+        message: 'Material agregado correctamente.'
+    });
+
+}
