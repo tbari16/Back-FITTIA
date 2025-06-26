@@ -132,6 +132,7 @@ exports.createService = async(req,res) => {
             status: saved.status
         });
     } catch(err) {
+        console.log("Error en: ", err)
         res.status(500).json({error: "Error al crear el servicio"});
     }
 };

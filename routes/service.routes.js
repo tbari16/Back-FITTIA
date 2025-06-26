@@ -7,7 +7,7 @@ const roleMiddleware = require('../middlewares/roleMiddleware');
 router.get('/', serviceController.getAllPublishedServices);
 router.get('/search', serviceController.searchServices);
 router.get('/trainers/:trainerId/services', authMiddleware, roleMiddleware('trainer'), serviceController.getTrainerServices);
-router.post('/', authMiddleware, roleMiddleware('trainer'), serviceController.createService);
+router.post('/trainer/create', authMiddleware, roleMiddleware('trainer'), serviceController.createService);
 router.patch('/:serviceId/status', authMiddleware, roleMiddleware('trainer'), serviceController.updateServiceStatus);
 router.delete('/:serviceId', authMiddleware, roleMiddleware('trainer'), serviceController.deleteService);
 
